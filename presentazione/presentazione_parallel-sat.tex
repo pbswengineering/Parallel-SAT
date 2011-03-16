@@ -1,0 +1,457 @@
+\documentclass[12pt,xcolor=dvipsnames]{beamer}
+
+\usetheme{Dresden}
+% Pittsburgh: nice and empty
+% Marburg: stylish right side bar
+
+\usepackage[utf8]{inputenc}
+\usepackage[italian]{babel}
+\usepackage{listings}
+
+\frenchspacing
+
+\lstset {
+	basicstyle=\footnotesize,       % the size of the fonts that are used for the code
+	numberstyle=\footnotesize,      % the size of the fonts that are used for the line-numbers
+	stepnumber=2,                   % the step between two line-numbers. If it's 1 each line will be numbered
+	numbersep=5pt,                  % how far the line-numbers are from the code
+	backgroundcolor=\color{white},  % choose the background color. You must add \usepackage{color}
+	showspaces=false,               % show spaces adding particular underscores
+	showstringspaces=false,         % underline spaces within strings
+	showtabs=false,                 % show tabs within strings adding particular underscores
+	frame=single,                   % adds a frame around the code
+	tabsize=4,                      % sets default tabsize to 2 spaces
+	captionpos=b,                   % sets the caption-position to bottom
+	breaklines=true,                % sets automatic line breaking
+	breakatwhitespace=false,        % sets if automatic breaks should only happen at whitespace
+	escapeinside={\%*}{*)}          % if you want to add a comment within your code
+}
+
+\setbeamercovered{transparent}
+\setbeamertemplate{background canvas}{\includegraphics[width=\paperwidth,height=\paperheight]{unipg-back.png}}
+\usecolortheme[named=Maroon]{structure}
+
+% 25mm is very good with themes that allows for more space
+\pgfdeclareimage[height=15mm]{logo}{unipg.png}
+\pgfdeclareimage[height=35mm]{albero}{albero.png}
+\pgfdeclareimage[height=50mm]{depth-first}{depthfirst.png}
+\pgfdeclareimage[height=65mm]{grafico-tempi}{grafico-tempi.png}
+\pgfdeclareimage[height=65mm]{grafico-speed-up}{grafico-speed-up.png}
+\pgfdeclareimage[height=65mm]{grafico-efficienza}{grafico-efficienza.png}
+
+\title{Implementazione di un SAT solver parallelo basato sull'algoritmo DPLL}
+\titlegraphic{\pgfuseimage{logo}}
+\author{Paolo Bernardi}
+\subtitle{Esame di Applicazioni e Calcolo in Rete, corso avanzato}
+\institute{Università degli Studi di Perugia - Corso di Laurea in Informatica}
+\date{30 settembre 2008}
+
+\begin{document}
+
+%\transduration{1}
+
+\begin{frame}
+	\titlepage
+\end{frame}
+
+\part{La teoria}
+
+\begin{frame}
+	\partpage
+\end{frame}
+
+\section{Il problema SAT}
+
+\begin{frame}
+	\frametitle{Il problema SAT}
+	\begin{itemize}
+	 \item SAT: Soddisfacibilità booleana/proposizionale \pause
+	 \item 1971, Stephen Cook: SAT è NP-completo \pause
+	 \item Qualsiasi problema NP-completo può essere ricondotto a SAT in tempo polinomiale
+	\end{itemize}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Conjunctive Normal Form}
+	\begin{itemize}
+	 \item I SAT solver lavorano su formule in CNF \pause
+	 \item Qualsiasi formula booleana può essere ricondotta in CNF in tempo polinomiale \pause
+     \item Formula in CNF: Clausola1 and Clausola2 and \ldots{} \pause
+     \item Clausola: Letterale1 or Letterale2 or \ldots{} \pause
+     \item Letterale: Variabile1/not Variabile1
+	\end{itemize}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Le applicazioni di SAT}
+	\begin{itemize}
+	 \item Verifica di microprocessori \pause
+	 \item Model checking \pause
+     \item Ragionamento automatico \pause
+     \item \ldots{}
+	\end{itemize}
+\end{frame}
+
+\section{Il backtracking}
+
+\begin{frame}
+	\frametitle{Il backtracking}
+    \begin{center}
+    \pgfuseimage{albero}
+    \end{center}
+	\begin{itemize}
+	 \item Visita in depth-first dell'albero delle valutazioni \pause
+	 \item $n$ variabili $\rightarrow$ albero da $2^{n}-1$ nodi \pause
+     \item Complessità esponenziale
+	\end{itemize}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Il backtracking}
+    \begin{center}
+    \pgfuseimage{depth-first}
+    \end{center}
+\end{frame}
+
+\section{La procedura DPLL}
+
+\begin{frame}
+	\frametitle{La procedura DPLL}
+	\begin{itemize}
+	 \item 1962: Davis, Putnam, Logemann, Loveland \pause
+	 \item Backtracking specifico per SAT \pause
+     \item Se può, assegna un valore fisso ad una variabile \pause
+     \item Se può, determina la correttezza di una soluzione parziale
+	\end{itemize}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Assegnare un valore fisso}
+	\textbf{Asserzione:} clausole di una sola variabile: TRUE se è positiva, FALSE se è negata \pause
+
+    \begin{center}
+        \ldots{} and $variabile$ and \ldots{} $\rightarrow$ $variabile = T$ \pause
+
+        \ldots{} and $($not $variabile)$ and \ldots{} $\rightarrow$ $variabile = F$
+    \end{center}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Assegnare un valore fisso}
+	\textbf{Letterale puro:} variabile sempre positiva o negata in tutta la formula: rispettivamente TRUE o FALSE \pause
+
+    \begin{center}
+        $(x$ or $y$ or $($not $z))$ and $(x$ or $($not $y)$ or $z)$ $\rightarrow$ $x = T$ \pause
+
+        $(($not $x)$ or $y)$ and $(($not $x)$ or $($not $y))$ $\rightarrow$ $x = F$
+    \end{center}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Correttezza di soluzioni parziali}
+	\begin{itemize}
+     \item Consente di evitare di arrivare alle foglie dell'albero \pause
+	 \item La formula viene modificata: ogni nodo dell'albero deve avere $(Valutazione, Formula)$
+	\end{itemize}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Correttezza di soluzioni parziali}
+	\begin{itemize}
+	 \item \textbf{Sussunzione:} elimina \textit{clausole} con variabili positive (negate) con valore TRUE (FALSE) \pause
+     \item Formula priva di clausole $\rightarrow$ soluzione
+	\end{itemize} \pause
+    \begin{center}
+        \ldots{} and $(x$ or $y$ or $z)$ and \ldots{}, $x = T$ $\rightarrow$ sussunzione \pause
+
+        \ldots{} and $(($not $x)$ or $y)$ and \ldots{}, $x = F$ $\rightarrow$ sussunzione
+    \end{center}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Correttezza di soluzioni parziali}
+	\begin{itemize}
+     \item \textbf{Risoluzione unitaria:} elimina {variabili} positive (negate) con valore FALSE (TRUE) \pause
+     \item Formula con clausola senza variabili $\rightarrow$ soluzione errata
+	\end{itemize} \pause
+    \begin{center}
+        \ldots{} and $(x$ or $y)$ and \ldots{}, $x = F$ $\rightarrow$ \ldots{} and $y$ and \ldots{} \pause
+
+        \ldots{} and $(($not $x)$ or $y)$ and \ldots{}, $x = T$ $\rightarrow$ \ldots{} and $y$ and \ldots{}
+    \end{center}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Ritorno al backtracking}
+	\begin{itemize}
+	 \item Quando non posso applicare le regole precedenti: \textbf{sdoppiamento} \pause
+	 \item Origine dell'esponenzialità \pause
+     \item Quale variabile scegliere?
+	\end{itemize}
+\end{frame}
+
+\section{Parallelizzare la DPLL}
+
+\begin{frame}
+	\frametitle{Parallelizzare la DPLL}
+	\begin{itemize}
+	 \item Operazioni su un singolo nodo veloci? \pause
+     \item \ldots{} niente parallelismo a grana fine \pause
+	 \item Numero di nodi esponenziale? \pause
+     \item \ldots{} sottoalberi processati in parallelo (grana grossa) \pause
+     \item Impossibile valutare il tempo per un sottoalbero? \pause
+     \item \ldots{} dynamic task-farm
+	\end{itemize}
+\end{frame}
+
+\part{Implementazione}
+
+\begin{frame}
+	\partpage
+\end{frame}
+
+\section{Strumenti utilizzati}
+
+\begin{frame}[fragile]
+	\frametitle{Alla base di tutto}
+	\begin{itemize}
+	 \item C++: programmazione a oggetti e STL \pause
+	 \item MPI 2: interfaccia per il C++
+	\end{itemize} \pause
+\begin{lstlisting}[language=c++]
+// Versione C
+int ok = MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+
+// Versione C++
+bool ok = MPI::COMM_WORLD.Iprobe(MPI::ANY_SOURCE, MPI::ANY_TAG);
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Per lo sviluppo}
+	\begin{itemize}
+	 \item Cluster di 4 macchine virtuali XEN \pause
+	 \item Processore dual-core, 96Mb di RAM \pause
+	 \item GCC 4 \pause
+     \item OpenMPI
+	\end{itemize}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Per il testing}
+	\begin{itemize}
+	 \item Chemgrid: 9 processori dual-core, 1Gb di RAM\pause
+	 \item Intel C++ Compiler 10.1 \pause
+	 \item MPICH2
+	\end{itemize}
+\end{frame}
+
+\section{Formato del file di input}
+
+\begin{frame}
+	\frametitle{File in formato CNF}
+	\begin{itemize}
+	 \item Standard de facto per i SAT solver \pause
+     \item File di testo ``row-oriented'' \pause
+	 \item Commenti che iniziano con ``c'' \pause
+     \item Intestazione: ``p cnf num\_clausole num\_variabili'' \pause
+	 \item Variabili indicizzate e indicate dal loro indice \pause
+     \item Variabili negate $\rightarrow$ numeri negativi \pause
+     \item Clausole $\rightarrow$ numeri separati da spazi e terminati con 0
+	\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Esempio di file CNF}
+    \begin{itemize}
+     \item Codifica della formula \verb|(a or b or c) and (d or (not a)) and (not b)|
+    \end{itemize} \pause
+\begin{lstlisting}
+c File di esempio
+p cnf 3 4
+1 2 3 0
+4 -1 0
+-2 0
+c Fine dell'esempio
+\end{lstlisting}
+\end{frame}
+
+\section{Struttura del programma}
+
+\begin{frame}
+    \frametitle{L'uso di MPI}
+    \begin{itemize}
+     \item Chiamate MPI incapsulate nei metodi della classe Communications \pause
+     \item Oggetti complessi serializzati prima dell'invio \pause
+     \item Primitive utilizzate: Send, Recv, Iprobe, Bcast, Wtime
+    \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Main: master}
+\begin{lstlisting}[language=c++]
+Node n(argv[1]);
+double start_time = MPI::Wtime();
+
+if (dpll(n, c))
+    cout << "SAT" << endl;
+else
+    cout << "UNSAT" << endl;
+
+double end_time = MPI::Wtime();
+cout << "Execution time: " << end_time - start_time << " secs." << endl;
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Main: worker}
+\begin{lstlisting}[language=c++]
+bool the_end = false;
+Node n;
+while (!the_end && !c.has_done) {
+    Message m = c.wait_for_message();
+    switch(m.type) {
+        case PREPARE:
+            n = c.receive_node();
+            dpll(n, c);
+            break;
+        case ALL_DONE:
+            the_end = true;
+            break;
+    }
+}
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{DPLL: codice principale}
+\begin{lstlisting}[language=c++]
+stack<Node> s;
+s.push(initial);
+while (!s.empty()) {
+    // Message check & (maybe) receive
+    Node n = s.pop();
+    if (n.contains_zero_clauses())
+    {
+        if (!c.is_master()) c.tell_result(SAT);
+        return true;
+    }
+    else if (n.contains_empty_clause()) continue
+    else if (/* Can apply a rule */) s.push(n);
+    else // Apply splitting
+}
+// Ending routine
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{DPLL: Sdoppiamento}
+\begin{lstlisting}[language=c++]
+Node n2 = n;
+int a = n.find_unassigned_atom();
+n.assign(a, true);
+n2.assign(a, false);
+s.push(n);
+
+if (!c.is_master() || !c.give_away(n2))
+    s.push(n2);
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{DPLL: ricezione dei messaggi}
+\begin{lstlisting}[language=c++]
+if (c.any_message_waiting()) {
+    Message m = c.wait_for_message();
+    if (c.is_master()) {
+        if (m.type == SAT) return true;
+        else c.set_available(m.source);
+    } else if (m.type == ALL_DONE) {
+        c.has_done = true;
+        return true;
+    }
+}
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{DPLL: fase finale}
+\begin{lstlisting}[language=c++]
+if (!c.is_master()) {
+    c.tell_result(Message::UNSAT);
+    return false;
+} else {
+    while (c.busy_workers() > 0) {
+        Message m = c.wait_for_message();
+        if (m.type == SAT) return true;
+        else c.set_available(m.source);
+    }
+    return false;
+}
+\end{lstlisting}
+\end{frame}
+
+\section{Prestazioni}
+
+\begin{frame}
+    \begin{itemize}
+     \item File di prova: 300 clausole, 400 variabili \pause
+     \item Media di 50 prove per numero di processori \pause
+     \item Caveat: prestazioni DPLL dipendono molto dall'input
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Tempi di esecuzione}
+    \begin{center}
+     \pgfuseimage{grafico-tempi}
+    \end{center}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Speed-up}
+    \begin{center}
+     \pgfuseimage{grafico-speed-up}
+    \end{center}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Efficienza}
+    \begin{center}
+     \pgfuseimage{grafico-efficienza}
+    \end{center}
+\end{frame}
+
+\part{Conclusioni}
+
+\begin{frame}
+	\partpage
+\end{frame}
+
+\begin{frame}
+	\frametitle{Note positive}
+	\begin{itemize}
+     \item Elevata portabilità: compilatore e libreria MPI \pause
+     \item Possibilità di sperimentare l'interfaccia MPI 2 per il C++
+	\end{itemize}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Futuro}
+	\begin{itemize}
+	 \item Il progetto prosegue con l'esame di Fondamenti di IA \pause
+	 \item Modularità: altri algoritmi per sopperire alle carenze della DPLL \pause
+	 \item Perfezionamento DPLL: euristica per la scelta della variabile su cui ``sdoppiare''
+	\end{itemize}
+\end{frame}
+
+\begin{frame}
+    \begin{center}
+        \Huge{THE END}
+    \end{center}
+\end{frame}
+
+\end{document}
+
+% That's all, folks!
+

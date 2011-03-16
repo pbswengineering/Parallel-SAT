@@ -1,0 +1,12 @@
+Questo pacchetto contiene una semplice implementazione parallela
+della procedura DPLL per la risoluzione del problema SAT; se queste
+due parole vi suonano nuove sicuramente non avete bisogno di questo
+programma. :-)
+
+L'implementazione è basata su MPI; durante lo sviluppo sono state
+usate le piattaforme OpenMPI e MPICH, sempre su sistemi Linux.
+
+Il contenuto delle directory è il seguente:
+   * src/            Il codice sorgente del programma
+   * relazione/      Una breve relazione sul programma
+   * presentazione/  Una presentazione sul programma
